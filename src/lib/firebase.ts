@@ -32,4 +32,4 @@ export function getDb(): Firestore {
 }
 
 export const ADMIN_EMAIL = "admin@brinnovate.in";
-export const UPI_ID = "brinnovate@upi";
+export const UPI_ID = "9176501954@ibl";
