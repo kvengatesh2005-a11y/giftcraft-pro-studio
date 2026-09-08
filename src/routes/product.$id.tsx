@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { useProduct, useProducts, useReviews } from "@/lib/data";
+import { useProduct, useProducts, useReviews, useDeliverySettings } from "@/lib/data";
 import { getDb } from "@/lib/firebase";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ function ProductPage() {
   const { data: product, isLoading } = useProduct(id);
   const { data: all = [] } = useProducts();
   const { data: reviews = [], refetch } = useReviews(id);
+  const { data: deliverySettings } = useDeliverySettings();
   const { addToCart, toggleWishlist, isWishlisted, formatPrice, country, user } = useApp();
   const [qty, setQty] = useState(1);
   const [active, setActive] = useState(0);
@@ -210,13 +211,20 @@ function ProductPage() {
             </Button>
           </div>
 
-          <div className="mt-6 flex items-start gap-2 rounded-lg border border-border bg-card p-4 text-sm">
-            <Truck className="mt-0.5 h-4 w-4 text-gold-foreground" />
-            <span className="text-muted-foreground">
-              Ships to {country.name} in {country.deliveryDays} days · delivery{" "}
-              {formatPrice(country.deliveryCharge)}
-            </span>
-          </div>
+          {(() => {
+            const countryRate = deliverySettings?.countryRates?.[country.code];
+            const rawDeliveryCharge = countryRate?.deliveryCharge ?? (country.code === "IN" ? (deliverySettings?.deliveryCharge ?? country.deliveryCharge) : country.deliveryCharge);
+            const deliveryDaysText = countryRate?.deliveryDays ?? (country.code === "IN" ? (deliverySettings?.deliveryDays || country.deliveryDays) : country.deliveryDays);
+            return (
+              <div className="mt-6 flex items-start gap-2 rounded-lg border border-border bg-card p-4 text-sm">
+                <Truck className="mt-0.5 h-4 w-4 text-gold-foreground" />
+                <span className="text-muted-foreground">
+                  Ships to {country.name} in {deliveryDaysText} · delivery{" "}
+                  {rawDeliveryCharge === 0 ? "FREE" : formatPrice(rawDeliveryCharge)}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

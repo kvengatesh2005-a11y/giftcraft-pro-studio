@@ -31,5 +31,6 @@ export function getDb(): Firestore {
   return dbInstance;
 }
 
-export const ADMIN_EMAIL = "admin@brinnovate.in";
+export const ADMIN_EMAIL = "brcreatives4@gmail.com";
 export const UPI_ID = "9176501954@ibl";
+

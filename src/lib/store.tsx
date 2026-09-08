@@ -60,13 +60,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]!);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setCart(read<CartItem[]>("cart", []));
     setWishlist(read<Product[]>("wishlist", []));
-    setCountry(read<Country>("selectedCountry", COUNTRIES[0]));
+    setCountry(read<Country>("selectedCountry", COUNTRIES[0]!));
     setUser(read<AppUser | null>("user", null));
     setIsAdmin(read<boolean>("isAdmin", false));
     setHydrated(true);
@@ -95,7 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let profile: AppUser = {
         uid: fbUser.uid,
         email: fbUser.email ?? "",
-        name: fbUser.displayName || (fbUser.email ?? "").split("@")[0],
+        name: fbUser.displayName || (fbUser.email ?? "").split("@")[0] || "",
       };
       try {
         const snap = await getDoc(doc(getDb(), "users", fbUser.uid));

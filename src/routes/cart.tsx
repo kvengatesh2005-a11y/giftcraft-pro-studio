@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
+import { useDeliverySettings } from "@/lib/data";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/cart")({
 });
 
 function Cart() {
-  const { cart, updateQuantity, removeFromCart, cartTotal, formatPrice, country } = useApp();
+  const { cart, updateQuantity, removeFromCart, cartTotal, formatPrice, country, convertPrice } = useApp();
+  const { data: deliverySettings } = useDeliverySettings();
 
   if (cart.length === 0) {
     return (
@@ -30,7 +32,9 @@ function Cart() {
     );
   }
 
-  const delivery = country.deliveryCharge;
+  const countryRate = deliverySettings?.countryRates?.[country.code];
+  const rawDeliveryCharge = countryRate?.deliveryCharge ?? (country.code === "IN" ? (deliverySettings?.deliveryCharge ?? country.deliveryCharge) : country.deliveryCharge);
+  const deliveryDaysText = countryRate?.deliveryDays ?? (country.code === "IN" ? (deliverySettings?.deliveryDays || country.deliveryDays) : country.deliveryDays);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -46,53 +50,42 @@ function Cart() {
                 {item.images?.[0] ? (
                   <img src={item.images[0]} alt={item.name} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="flex h-full w-full items-center justify-center text-3xl">
-                    {item.icon || "🎁"}
-                  </span>
+                  <div className="flex h-full w-full items-center justify-center font-display text-xl text-primary/40">
+                    {item.name[0]}
+                  </div>
                 )}
               </div>
-              <div className="flex flex-1 flex-col">
-                <Link
-                  to="/product/$id"
-                  params={{ id: item.id }}
-                  className="font-display text-lg hover:text-primary"
-                >
-                  {item.name}
-                </Link>
-                <span className="text-xs text-muted-foreground">{item.category}</span>
-                <div className="mt-auto flex items-center justify-between pt-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8"
+              <div className="flex flex-1 flex-col justify-between">
+                <div>
+                  <h3 className="font-semibold text-foreground">{item.name}</h3>
+                  <p className="text-sm font-medium text-primary">
+                    {formatPrice(Number(item.price))}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center rounded-lg border border-border">
+                    <button
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="px-2.5 py-1 text-sm font-medium hover:bg-muted"
                     >
-                      <Minus className="h-3.5 w-3.5" />
-                    </Button>
-                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8"
+                      -
+                    </button>
+                    <span className="px-3 py-1 text-sm font-semibold">{item.quantity}</span>
+                    <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="px-2.5 py-1 text-sm font-medium hover:bg-muted"
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
+                      +
+                    </button>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-primary">
-                      {formatPrice(item.price * item.quantity)}
-                    </span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Remove"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFromCart(item.id)}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -107,12 +100,12 @@ function Cart() {
               <dd>{formatPrice(cartTotal)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Delivery ({country.deliveryDays} days)</dt>
-              <dd>{formatPrice(delivery)}</dd>
+              <dt className="text-muted-foreground">Delivery ({deliveryDaysText} · {country.name})</dt>
+              <dd>{rawDeliveryCharge === 0 ? <span className="font-semibold text-emerald-600 dark:text-emerald-400">FREE</span> : formatPrice(rawDeliveryCharge)}</dd>
             </div>
             <div className="flex justify-between border-t border-border pt-3 text-base font-semibold">
               <dt>Total</dt>
-              <dd className="text-primary">{formatPrice(cartTotal + delivery)}</dd>
+              <dd className="text-primary">{formatPrice(cartTotal + rawDeliveryCharge)}</dd>
             </div>
           </dl>
           <Button asChild className="mt-6 w-full" size="lg">

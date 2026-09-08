@@ -41,6 +41,9 @@ export type Order = {
   status: string;
   paymentMethod: string;
   transactionId?: string | null;
+  razorpayPaymentId?: string | null;
+  razorpayOrderId?: string | null;
+  paymentStatus?: string;
   createdAt: string;
   userId?: string | null;
 };
@@ -51,6 +54,9 @@ export type Coupon = {
   discountAmount: number;
   isActive: boolean;
   validUntil?: string;
+  minOrderAmount?: number;
+  firstCustomerOnly?: boolean;
+  description?: string;
 };
 
 export type Poster = {
@@ -89,7 +95,7 @@ export const CATEGORIES = [
   "Earrings",
   "Hair Clips",
   "Hand Bags",
-  "chains",
+  "Chains",
   "Keychains",
   "Return Gifts",
   "Kada Bracelets",
@@ -119,81 +125,82 @@ export const COUNTRIES: Country[] = [
     currency: "₹",
     currencyCode: "INR",
     deliveryCharge: 60,
-    deliveryDays: "3-5",
+    deliveryDays: "3-5 business days",
     flag: "🇮🇳",
   },
   {
     code: "US",
     name: "United States",
-    currency: "$",
-    currencyCode: "USD",
-    deliveryCharge: 1500,
-    deliveryDays: "7-10",
+    currency: "₹",
+    currencyCode: "INR",
+    deliveryCharge: 1200,
+    deliveryDays: "7-10 business days",
     flag: "🇺🇸",
   },
   {
-    code: "UK",
+    code: "GB",
     name: "United Kingdom",
-    currency: "£",
-    currencyCode: "GBP",
-    deliveryCharge: 1200,
-    deliveryDays: "7-10",
+    currency: "₹",
+    currencyCode: "INR",
+    deliveryCharge: 1100,
+    deliveryDays: "7-10 business days",
     flag: "🇬🇧",
   },
   {
     code: "CA",
     name: "Canada",
-    currency: "C$",
-    currencyCode: "CAD",
-    deliveryCharge: 1400,
-    deliveryDays: "8-12",
+    currency: "₹",
+    currencyCode: "INR",
+    deliveryCharge: 1250,
+    deliveryDays: "7-12 business days",
     flag: "🇨🇦",
   },
   {
     code: "AU",
     name: "Australia",
-    currency: "A$",
-    currencyCode: "AUD",
-    deliveryCharge: 1600,
-    deliveryDays: "8-12",
+    currency: "₹",
+    currencyCode: "INR",
+    deliveryCharge: 1300,
+    deliveryDays: "7-12 business days",
     flag: "🇦🇺",
   },
   {
     code: "AE",
     name: "UAE",
-    currency: "د.إ",
-    currencyCode: "AED",
+    currency: "₹",
+    currencyCode: "INR",
     deliveryCharge: 1000,
-    deliveryDays: "5-7",
+    deliveryDays: "5-7 business days",
     flag: "🇦🇪",
   },
   {
     code: "SG",
     name: "Singapore",
-    currency: "S$",
-    currencyCode: "SGD",
-    deliveryCharge: 800,
-    deliveryDays: "4-6",
+    currency: "₹",
+    currencyCode: "INR",
+    deliveryCharge: 950,
+    deliveryDays: "5-7 business days",
     flag: "🇸🇬",
   },
   {
     code: "MY",
     name: "Malaysia",
-    currency: "RM",
-    currencyCode: "MYR",
-    deliveryCharge: 700,
-    deliveryDays: "4-6",
+    currency: "₹",
+    currencyCode: "INR",
+    deliveryCharge: 900,
+    deliveryDays: "5-7 business days",
     flag: "🇲🇾",
   },
 ];
 
 export const CONVERSION_RATES: Record<string, number> = {
   IN: 1,
-  US: 0.012,
-  UK: 0.0095,
-  CA: 0.016,
-  AU: 0.018,
-  AE: 0.044,
-  SG: 0.016,
-  MY: 0.056,
+  US: 1,
+  GB: 1,
+  CA: 1,
+  AU: 1,
+  AE: 1,
+  SG: 1,
+  MY: 1,
 };
+
