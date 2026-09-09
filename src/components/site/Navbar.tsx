@@ -37,17 +37,17 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-18 max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex h-16 sm:h-18 max-w-7xl items-center gap-2 sm:gap-4 px-3 sm:px-6">
 
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
           <img
             src="/favicon.png"
             alt="br_Treasure_Trove logo"
-            className="h-11 w-11 rounded-full object-cover ring-2 ring-gold/60"
+            className="h-8 w-8 sm:h-11 sm:w-11 rounded-full object-cover ring-2 ring-gold/60 shrink-0"
           />
-          <span className="flex flex-col leading-none">
-            <span className="font-display text-xl text-primary">br_Treasure_Trove</span>
-            <span className="text-[0.62rem] tracking-[0.28em] text-muted-foreground uppercase">
+          <span className="flex flex-col leading-none min-w-0">
+            <span className="font-display text-sm sm:text-xl text-primary font-bold tracking-tight truncate">br_Treasure_Trove</span>
+            <span className="text-[0.5rem] sm:text-[0.62rem] tracking-[0.18em] sm:tracking-[0.22em] text-muted-foreground uppercase truncate hidden xs:block">
               Gifts & Crafts
             </span>
           </span>
@@ -75,14 +75,14 @@ export function Navbar() {
           )}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-2 shrink-0">
           {/* Ship to Country Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-foreground hover:bg-muted/70 transition-colors focus:outline-none">
+              <button className="flex items-center gap-1 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold text-foreground hover:bg-muted/70 transition-colors focus:outline-none">
                 <span className="font-bold">{country.code}</span>
-                <span className="font-bold">{country.currencyCode}</span>
-                <ChevronDown className="h-4 w-4 text-foreground/80" />
+                <span className="font-bold hidden xs:inline">{country.currencyCode}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-foreground/80" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72 p-3 shadow-xl border border-border rounded-xl bg-card">

@@ -127,17 +127,17 @@ function ProductPage() {
             )}
           </div>
           {images.length > 1 && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2.5">
               {images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setActive(i)}
                   className={cn(
-                    "h-16 w-16 overflow-hidden rounded-md border-2",
-                    i === active ? "border-primary" : "border-transparent",
+                    "h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all cursor-pointer",
+                    i === active ? "border-primary ring-2 ring-primary/20 shadow-xs" : "border-transparent opacity-75 hover:opacity-100",
                   )}
                 >
-                  <img src={img} alt="" className="h-full w-full object-cover" />
+                  <img src={img} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

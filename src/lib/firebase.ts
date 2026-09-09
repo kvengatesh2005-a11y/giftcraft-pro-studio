@@ -1,6 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCdakn-JJI7sddaaAyOBqRWSZS9s1xRBoM",
@@ -15,6 +16,7 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 function getApp(): FirebaseApp {
   if (!app) app = getApps()[0] ?? initializeApp(firebaseConfig);
@@ -31,6 +33,16 @@ export function getDb(): Firestore {
   return dbInstance;
 }
 
+export function getStorageClient(): FirebaseStorage | null {
+  try {
+    if (!storageInstance) storageInstance = getStorage(getApp());
+    return storageInstance;
+  } catch {
+    return null;
+  }
+}
+
 export const ADMIN_EMAIL = "brcreatives4@gmail.com";
 export const UPI_ID = "9176501954@ibl";
+
 

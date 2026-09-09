@@ -19,7 +19,7 @@ export function Footer() {
             worldwide.
           </p>
           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gold/20 px-3 py-1 text-xs font-semibold text-gold border border-gold/40">
-            <Truck className="h-3.5 w-3.5" /> ✈️ Worldwide Shipping • Express Delivery
+            <Truck className="h-3.5 w-3.5" /> ✈️ Worldwide Shipping  • Express Delivery
           </div>
         </div>
 

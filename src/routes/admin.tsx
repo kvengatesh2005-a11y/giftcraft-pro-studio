@@ -20,7 +20,13 @@ import {
   Lock,
   FileText,
   Printer,
+  Upload,
+  Star,
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
 } from "lucide-react";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { downloadInvoicePDF, openPrintableInvoice } from "@/lib/invoice";
 import { Button } from "@/components/ui/button";
@@ -49,7 +55,7 @@ import {
 } from "@/lib/data";
 import { useApp } from "@/lib/store";
 import { CATEGORIES, COUNTRIES, CONVERSION_RATES, type Product, type Order, type Coupon, type Poster } from "@/lib/types";
-import { ADMIN_EMAIL } from "@/lib/firebase";
+import { ADMIN_EMAIL, getStorageClient } from "@/lib/firebase";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -100,7 +106,7 @@ export function Admin() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="mt-6 flex flex-wrap gap-2 border-b border-border pb-3">
+      <div className="mt-6 flex gap-2 border-b border-border pb-3 overflow-x-auto no-scrollbar scroll-smooth">
         {[
           { id: "products", label: "Products", icon: Package },
           { id: "orders", label: "Orders", icon: ShoppingBag },
@@ -115,7 +121,7 @@ export function Admin() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as TabType)}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
                 isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-card text-foreground hover:bg-muted"
@@ -144,6 +150,93 @@ export function Admin() {
 /* ==========================================================================
    PRODUCTS MANAGEMENT TAB
    ========================================================================== */
+function compressImage(file: File, maxDimension = 800, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadProductImage(file: File): Promise<string> {
+  // Compress client-side first so an instant fallback is immediately ready
+  const compressedBase64 = await compressImage(file).catch(() => "");
+
+  // Race network upload against a strict 2.5-second timeout so UI never hangs
+  const uploadTask = (async () => {
+    // 1. Try Firebase Storage with rapid check
+    try {
+      const storage = getStorageClient();
+      if (storage) {
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storageRef = ref(storage, `products/${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${cleanFileName}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(snapshot.ref);
+        if (downloadUrl) return downloadUrl;
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Try ImgBB upload with 2s fetch signal timeout
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch("https://api.imgbb.com/1/upload?key=3c9b7405be5332ad9f1b402a55faaa22", {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data?.url) return json.data.url;
+      }
+    } catch {
+      // ignore
+    }
+
+    return compressedBase64;
+  })();
+
+  const timeoutTask = new Promise<string>((resolve) => {
+    setTimeout(() => resolve(compressedBase64), 2500);
+  });
+
+  const result = await Promise.race([uploadTask, timeoutTask]);
+  return result || compressedBase64;
+}
+
 function ProductsTab() {
   const { data: products = [], refetch, isLoading } = useProducts();
   const [search, setSearch] = useState("");
@@ -153,6 +246,10 @@ function ProductsTab() {
 
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
+
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [urlInput, setUrlInput] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const allCategories = useMemo(() => {
     const set = new Set<string>(CATEGORIES);
@@ -171,7 +268,6 @@ function ProductsTab() {
     originalPrice: "",
     description: "",
     stock: "10",
-    imageUrl: "",
     icon: "🎁",
   });
 
@@ -179,6 +275,8 @@ function ProductsTab() {
     setEditingProduct(null);
     setIsCustomCategory(false);
     setCustomCategory("");
+    setProductImages([]);
+    setUrlInput("");
     setForm({
       name: "",
       category: CATEGORIES[0],
@@ -186,7 +284,6 @@ function ProductsTab() {
       originalPrice: "",
       description: "",
       stock: "10",
-      imageUrl: "",
       icon: "🎁",
     });
     setIsModalOpen(true);
@@ -195,6 +292,10 @@ function ProductsTab() {
   const openEditModal = (p: Product) => {
     setEditingProduct(p);
     const existingCat = p.category?.trim();
+    const existingImages = Array.isArray(p.images) ? p.images.filter(Boolean).slice(0, 6) : [];
+    setProductImages(existingImages);
+    setUrlInput("");
+
     if (existingCat && !allCategories.includes(existingCat)) {
       setIsCustomCategory(true);
       setCustomCategory(existingCat);
@@ -205,7 +306,6 @@ function ProductsTab() {
         originalPrice: p.originalPrice ? String(p.originalPrice) : "",
         description: p.description || "",
         stock: p.stock !== undefined ? String(p.stock) : "10",
-        imageUrl: p.images?.[0] || "",
         icon: p.icon || "🎁",
       });
     } else {
@@ -218,11 +318,75 @@ function ProductsTab() {
         originalPrice: p.originalPrice ? String(p.originalPrice) : "",
         description: p.description || "",
         stock: p.stock !== undefined ? String(p.stock) : "10",
-        imageUrl: p.images?.[0] || "",
         icon: p.icon || "🎁",
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (productImages.length >= 6) {
+      toast.error("Maximum 6 images allowed per product.");
+      e.target.value = "";
+      return;
+    }
+
+    const fileList = Array.from(files);
+    const remainingSlots = 6 - productImages.length;
+    if (fileList.length > remainingSlots) {
+      toast.warning(`Maximum 6 images allowed. Only the first ${remainingSlots} image(s) will be uploaded.`);
+    }
+
+    const selectedFiles = fileList.slice(0, remainingSlots);
+    setIsUploading(true);
+
+    try {
+      const newUrls = await Promise.all(selectedFiles.map((file) => uploadProductImage(file)));
+      setProductImages((prev) => [...prev, ...newUrls].slice(0, 6));
+      toast.success(`${newUrls.length} image(s) uploaded successfully!`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload image(s).");
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleAddUrl = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
+    if (productImages.length >= 6) {
+      toast.error("Maximum 6 images allowed per product.");
+      return;
+    }
+    setProductImages((prev) => [...prev, trimmed].slice(0, 6));
+    setUrlInput("");
+    toast.success("Image URL added!");
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setProductImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMoveImage = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= productImages.length) return;
+    setProductImages((prev) => {
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated;
+    });
+  };
+
+  const handleSetMainImage = (index: number) => {
+    if (index === 0) return;
+    handleMoveImage(index, 0);
+    toast.success("Set as main product cover image!");
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -233,6 +397,7 @@ function ProductsTab() {
     }
 
     const selectedCategory = (isCustomCategory ? customCategory.trim() : form.category).trim() || CATEGORIES[0];
+    const finalImages = productImages.filter((img) => img.trim() !== "").slice(0, 6);
 
     const payload = {
       name: form.name.trim(),
@@ -241,7 +406,7 @@ function ProductsTab() {
       originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
       description: form.description.trim(),
       stock: Number(form.stock) || 0,
-      images: form.imageUrl.trim() ? [form.imageUrl.trim()] : [],
+      images: finalImages,
       icon: form.icon || "🎁",
     };
 
@@ -326,7 +491,7 @@ function ProductsTab() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[650px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="p-4">Product</th>
@@ -481,15 +646,154 @@ function ProductsTab() {
                 </div>
               </div>
 
+              {/* Product Images Management (1 to 6 Images Allowed) */}
               <div>
-                <Label htmlFor="prod-img">Image URL</Label>
-                <Input
-                  id="prod-img"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                  placeholder="https://..."
-                  className="mt-1"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="text-sm font-semibold text-foreground">
+                    Product Images ({productImages.length}/6)
+                  </Label>
+                  <span className="text-xs text-muted-foreground font-medium">1 to 6 images allowed</span>
+                </div>
+
+                <div className="space-y-3">
+                  {productImages.length < 6 ? (
+                    <div className="space-y-2">
+                      <label
+                        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 text-center transition-colors ${
+                          isUploading
+                            ? "border-primary/50 bg-primary/5 pointer-events-none"
+                            : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={isUploading || productImages.length >= 6}
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        {isUploading ? (
+                          <div className="flex flex-col items-center py-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <p className="mt-2 text-xs font-medium text-muted-foreground">
+                              Uploading & generating link...
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center py-1">
+                            <Upload className="h-6 w-6 text-primary mb-1" />
+                            <p className="text-xs font-semibold text-foreground">
+                              Click to upload image file(s) <span className="font-normal text-muted-foreground">(1 or more images allowed)</span>
+                            </p>
+                            <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
+                              JPG, PNG, WEBP — upload 1 main image or up to 6 images max
+                            </p>
+                          </div>
+                        )}
+                      </label>
+
+                      <div className="flex gap-2">
+                        <Input
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddUrl();
+                            }
+                          }}
+                          placeholder="Or paste image URL (https://...)"
+                          disabled={productImages.length >= 6 || isUploading}
+                          className="text-xs h-9"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddUrl()}
+                          disabled={!urlInput.trim() || productImages.length >= 6 || isUploading}
+                          className="h-9 shrink-0 text-xs"
+                        >
+                          Add URL
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-center text-xs font-medium text-amber-700 dark:text-amber-300">
+                      Maximum limit reached (6/6 images). Remove an image below to add a new one.
+                    </div>
+                  )}
+
+                  {/* Image Thumbnails Grid */}
+                  {productImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2.5 pt-1">
+                      {productImages.map((imgUrl, index) => (
+                        <div
+                          key={index}
+                          className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-secondary shadow-xs transition-all hover:border-primary/50"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Product image ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+
+                          {/* Cover / Main Image Indicator */}
+                          {index === 0 ? (
+                            <span className="absolute top-1 left-1 flex items-center gap-1 rounded bg-amber-500 px-1.5 py-0.5 text-[0.65rem] font-bold text-slate-950 shadow-xs">
+                              <Star className="h-2.5 w-2.5 fill-slate-950" /> Cover
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSetMainImage(index)}
+                              title="Set as cover image"
+                              className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity rounded bg-black/70 px-1.5 py-0.5 text-[0.65rem] font-medium text-white hover:bg-amber-500 hover:text-black"
+                            >
+                              Set Cover
+                            </button>
+                          )}
+
+                          {/* Hover Controls */}
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1 opacity-90 transition-opacity group-hover:opacity-100">
+                            <div className="flex gap-0.5">
+                              {index > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveImage(index, index - 1)}
+                                  title="Move left"
+                                  className="rounded p-1 text-white hover:bg-white/20"
+                                >
+                                  <ArrowLeft className="h-3 w-3" />
+                                </button>
+                              )}
+                              {index < productImages.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveImage(index, index + 1)}
+                                  title="Move right"
+                                  className="rounded p-1 text-white hover:bg-white/20"
+                                >
+                                  <ArrowRight className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(index)}
+                              title="Remove image"
+                              className="rounded p-1 text-rose-400 hover:bg-rose-500 hover:text-white"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -576,7 +880,7 @@ function OrdersTab() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="p-4">Order Ref</th>
@@ -915,7 +1219,7 @@ function CouponsTab() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="p-4">Code</th>
@@ -1499,7 +1803,7 @@ function UsersTab() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[600px] text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="p-4">User</th>

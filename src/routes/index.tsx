@@ -96,7 +96,7 @@ function HeroBannerCarousel({ posters }: { posters: Poster[] }) {
     >
       <div className="relative group overflow-hidden rounded-2xl border-2 border-gold/70 bg-card/40 p-2 backdrop-blur-md shadow-lift">
         {/* Animated Slide Container matching banner image aspect ratio */}
-        <div className="relative w-full aspect-[8/3] sm:aspect-[8/3] overflow-hidden rounded-xl bg-neutral-950 flex items-center justify-center">
+        <div className="relative w-full aspect-[16/9] sm:aspect-[8/3] overflow-hidden rounded-xl bg-neutral-950 flex items-center justify-center">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentBanner.id}
@@ -238,9 +238,9 @@ function Home() {
           alt="Handcrafted gift collection"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/80 to-primary/45" />
-        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:py-28">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/85 to-primary/50" />
+        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-20 lg:py-28">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
             {/* Left Content */}
             <motion.div
               initial={{ opacity: 0, y: 24 }}
@@ -248,18 +248,18 @@ function Home() {
               transition={{ duration: 0.6 }}
               className="lg:col-span-7 text-primary-foreground"
             >
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/50 bg-gold/15 px-3.5 py-1 text-xs tracking-[0.2em] uppercase">
-                <Sparkles className="h-3.5 w-3.5" /> Handmade with love
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/50 bg-gold/15 px-3 py-1 text-[0.7rem] sm:text-xs tracking-[0.18em] uppercase">
+                <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Handmade with love
               </span>
-              <h1 className="mt-5 font-display text-4xl leading-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-3 sm:mt-5 font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight font-bold tracking-tight break-words">
                 Gifts worth treasuring, crafted one at a time
               </h1>
-              <p className="mt-5 max-w-xl text-base text-primary-foreground/85 sm:text-lg">
+              <p className="mt-3 sm:mt-5 max-w-xl text-xs sm:text-base md:text-lg text-primary-foreground/90 leading-relaxed">
                 Resin art, jewellery, hampers and personalised keepsakes — thoughtfully made in India
                 and delivered to your doorstep worldwide.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button size="lg" variant="gold" asChild>
+              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+                <Button size="lg" variant="gold" asChild className="w-full sm:w-auto justify-center">
                   <Link to="/shop">
                     Shop the collection <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
@@ -268,7 +268,7 @@ function Home() {
                   size="lg"
                   variant="outline"
                   asChild
-                  className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10"
+                  className="w-full sm:w-auto justify-center border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10"
                 >
                   <Link to="/about">Our story</Link>
                 </Button>
@@ -442,7 +442,7 @@ function Home() {
             No products published yet — add them from the admin dashboard.
           </p>
         ) : (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
             {featured.map((p, i) => (
               <ProductCard key={p.id} product={p} index={i} />
             ))}

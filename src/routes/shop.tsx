@@ -355,9 +355,9 @@ function Shop() {
 
           {/* Product Grid */}
           {isLoading ? (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-80 animate-pulse rounded-xl bg-muted" />
+                <div key={i} className="h-72 sm:h-80 animate-pulse rounded-xl bg-muted" />
               ))}
             </div>
           ) : list.length === 0 ? (
@@ -376,7 +376,7 @@ function Shop() {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
               {list.map((p, i) => (
                 <ProductCard key={p.id} product={p} index={i} />
               ))}
