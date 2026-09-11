@@ -5,14 +5,14 @@ export function generateInvoiceHtml(order: Order): string {
   const storeAddress = "No.20, 2nd Street, Vengadesapuram, Acharapakkam, Chengalpattu - 603301";
   const storeEmail = "brcreatives4@gmail.com";
   const storePhone = "+91 91765 01954";
-  const storeWebsite = "br_Treasure_Trove";
+  const storeWebsite = "www.brtreasuretrove.com";
 
   const formattedDate = order.createdAt
     ? new Date(order.createdAt).toLocaleDateString("en-IN", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
     : new Date().toLocaleDateString("en-IN");
 
   const invoiceNo = `INV-${order.id.slice(0, 8).toUpperCase()}`;
@@ -24,11 +24,10 @@ export function generateInvoiceHtml(order: Order): string {
       <tr style="border-bottom: 1px solid #e2e8f0; page-break-inside: avoid;">
         <td style="padding: 6px 8px; vertical-align: middle;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            ${
-              item.images && item.images[0]
-                ? `<img src="${item.images[0]}" alt="${item.name}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 5px; border: 1px solid #cbd5e1; flex-shrink: 0;" />`
-                : ""
-            }
+            ${item.images && item.images[0]
+          ? `<img src="${item.images[0]}" alt="${item.name}" style="width: 32px; height: 32px; object-fit: cover; border-radius: 5px; border: 1px solid #cbd5e1; flex-shrink: 0;" />`
+          : ""
+        }
             <div>
               <div style="font-weight: 700; color: #0f172a; font-size: 12px; line-height: 1.2;">${item.name}</div>
               <div style="font-size: 10px; color: #64748b; margin-top: 1px;">SKU: #${item.id.slice(0, 8).toUpperCase()}</div>
@@ -79,13 +78,11 @@ export function generateInvoiceHtml(order: Order): string {
           <div style="font-weight: 800; text-transform: uppercase; color: #000000; margin-bottom: 4px; letter-spacing: 0.5px; font-size: 10.5px;">PAYMENT METHOD</div>
           <div style="font-weight: 700; color: #0f172a; font-size: 11px;">${order.paymentMethod || "UPI Payment"}</div>
           <div style="color: #475569; margin-top: 1px;">Status: <span style="font-weight: 800; color: #16a34a; text-transform: uppercase;">${order.paymentStatus || "PAID"}</span></div>
-          ${
-            order.transactionId || order.razorpayPaymentId
-              ? `<div style="color: #475569; font-size: 9.5px; font-family: monospace; margin-top: 2px; word-break: break-all;">Ref: ${
-                  order.razorpayPaymentId || order.transactionId
-                }</div>`
-              : ""
-          }
+          ${order.transactionId || order.razorpayPaymentId
+      ? `<div style="color: #475569; font-size: 9.5px; font-family: monospace; margin-top: 2px; word-break: break-all;">Ref: ${order.razorpayPaymentId || order.transactionId
+      }</div>`
+      : ""
+    }
         </div>
 
         <div>
@@ -124,15 +121,14 @@ export function generateInvoiceHtml(order: Order): string {
             <span style="font-weight: 700; letter-spacing: 0.4px;">SUBTOTAL</span>
             <span style="font-weight: 700; color: #0f172a;">${currency}${(order.subtotal || 0).toLocaleString("en-IN")}</span>
           </div>
-          ${
-            order.couponDiscount
-              ? `
+          ${order.couponDiscount
+      ? `
           <div style="display: flex; justify-content: space-between; color: #16a34a;">
             <span style="font-weight: 700; letter-spacing: 0.4px;">DISCOUNT (${order.couponCode || "COUPON"})</span>
             <span style="font-weight: 700;">-${currency}${order.couponDiscount.toLocaleString("en-IN")}</span>
           </div>`
-              : ""
-          }
+      : ""
+    }
           <div style="display: flex; justify-content: space-between; color: #475569;">
             <span style="font-weight: 700; letter-spacing: 0.4px;">DELIVERY</span>
             <span style="font-weight: 700; color: #0f172a;">${currency}${(order.deliveryCharge || 0).toLocaleString("en-IN")}</span>
