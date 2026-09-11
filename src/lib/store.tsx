@@ -92,10 +92,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
+      const phoneFromAuth = fbUser.email?.endsWith("@phone.user")
+        ? fbUser.email.replace("@phone.user", "")
+        : "";
       let profile: AppUser = {
         uid: fbUser.uid,
         email: fbUser.email ?? "",
-        name: fbUser.displayName || (fbUser.email ?? "").split("@")[0] || "",
+        phone: phoneFromAuth,
+        name: fbUser.displayName || (phoneFromAuth ? `User ${phoneFromAuth}` : (fbUser.email ?? "").split("@")[0]) || "",
       };
       try {
         const snap = await getDoc(doc(getDb(), "users", fbUser.uid));

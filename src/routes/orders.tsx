@@ -21,12 +21,14 @@ export const Route = createFileRoute("/orders")({
 });
 
 const statusColor: Record<string, string> = {
-  pending: "bg-gold/20 text-gold-foreground",
-  confirmed: "bg-primary/10 text-primary",
-  shipped: "bg-primary/10 text-primary",
-  delivered: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-destructive/10 text-destructive",
+  pending: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30",
+  confirmed: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30",
+  shipped: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30",
+  delivered: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30",
+  cancelled: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30",
 };
+
+const ORDER_STEPS = ["pending", "confirmed", "shipped", "delivered"];
 
 function getPaymentBadge(status?: string) {
   const s = (status || "PENDING_VERIFICATION").toUpperCase();
@@ -56,7 +58,12 @@ function getPaymentBadge(status?: string) {
 
 function Orders() {
   const { user } = useApp();
-  const { data: orders = [], isLoading } = useMyOrders(user?.uid, user?.email);
+  const { data: orders = [], isLoading } = useMyOrders(
+    user?.uid,
+    user?.email,
+    user?.phone,
+    user?.displayEmail,
+  );
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -72,18 +79,21 @@ function Orders() {
 
   // Fetch user's submitted reviews to mark items as reviewed
   useEffect(() => {
-    if (!user?.uid) return;
+    const userId = user?.uid;
+    if (!userId) return;
     async function fetchUserReviews() {
       try {
         const db = getDb();
-        const snap = await getDocs(query(collection(db, "reviews"), where("userId", "==", user.uid)));
+        const snap = await getDocs(query(collection(db, "reviews"), where("userId", "==", userId)));
         const reviewedMap: Record<string, boolean> = {};
         snap.docs.forEach((doc) => {
           const data = doc.data();
-          if (data.orderId && data.productId) {
-            reviewedMap[`${data.orderId}_${data.productId}`] = true;
-          } else if (data.productId) {
-            reviewedMap[`${data.productId}`] = true;
+          const orderId = data["orderId"] as string | undefined;
+          const productId = data["productId"] as string | undefined;
+          if (orderId && productId) {
+            reviewedMap[`${orderId}_${productId}`] = true;
+          } else if (productId) {
+            reviewedMap[`${productId}`] = true;
           }
         });
         setSubmittedReviews(reviewedMap);

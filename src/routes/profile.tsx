@@ -66,7 +66,9 @@ function Profile() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
       <h1 className="font-display text-4xl text-primary">My profile</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {user.displayEmail || (user.email?.endsWith("@phone.user") ? `Phone: ${user.phone}` : user.email)}
+      </p>
       <form
         onSubmit={save}
         className="mt-8 space-y-4 rounded-xl border border-border bg-card p-6 shadow-soft"

@@ -60,6 +60,7 @@ export function useAllOrders(enabled: boolean) {
   return useQuery({
     queryKey: ["orders", "all"],
     enabled,
+    refetchInterval: 3000,
     queryFn: async () =>
       mapDocs<Order>(await getDocs(collection(getDb(), "orders"))).sort((a, b) =>
         (b.createdAt || "").localeCompare(a.createdAt || ""),
@@ -67,26 +68,93 @@ export function useAllOrders(enabled: boolean) {
   });
 }
 
-export function useMyOrders(userId?: string, email?: string) {
+export function useMyOrders(userId?: string, email?: string, phone?: string, displayEmail?: string) {
+  const phoneFromEmail = email?.endsWith("@phone.user") ? email.replace("@phone.user", "") : "";
+  const effectivePhone = phone || phoneFromEmail;
+
   return useQuery({
-    queryKey: ["orders", userId ?? email],
-    enabled: Boolean(userId || email),
+    queryKey: ["orders", userId, email, phone, displayEmail, effectivePhone],
+    enabled: Boolean(userId || email || phone || displayEmail || effectivePhone),
+    refetchInterval: 3000,
     queryFn: async () => {
       const db = getDb();
       const results: Order[] = [];
+
+      const safeFetch = async (q: any) => {
+        try {
+          const snap = await getDocs(q);
+          return mapDocs<Order>(snap);
+        } catch (err) {
+          console.warn("Firestore query warning in useMyOrders:", err);
+          return [];
+        }
+      };
+
       if (userId) {
-        results.push(
-          ...mapDocs<Order>(
-            await getDocs(query(collection(db, "orders"), where("userId", "==", userId))),
-          ),
-        );
+        const byUid = await safeFetch(query(collection(db, "orders"), where("userId", "==", userId)));
+        results.push(...byUid);
       }
+
       if (email) {
-        const byEmail = mapDocs<Order>(
-          await getDocs(query(collection(db, "orders"), where("customerEmail", "==", email))),
-        );
-        for (const o of byEmail) if (!results.some((r) => r.id === o.id)) results.push(o);
+        const byEmail = await safeFetch(query(collection(db, "orders"), where("customerEmail", "==", email)));
+        for (const o of byEmail) {
+          if (!results.some((r) => r.id === o.id)) results.push(o);
+        }
       }
+
+      if (displayEmail && displayEmail !== email) {
+        const byDisplayEmail = await safeFetch(query(collection(db, "orders"), where("customerEmail", "==", displayEmail)));
+        for (const o of byDisplayEmail) {
+          if (!results.some((r) => r.id === o.id)) results.push(o);
+        }
+      }
+
+      if (effectivePhone) {
+        const cleanPhone = effectivePhone.replace(/\D/g, "");
+        const byPhone = await safeFetch(query(collection(db, "orders"), where("customerPhone", "==", effectivePhone)));
+        for (const o of byPhone) {
+          if (!results.some((r) => r.id === o.id)) results.push(o);
+        }
+        if (cleanPhone && cleanPhone !== effectivePhone) {
+          const byCleanPhone = await safeFetch(query(collection(db, "orders"), where("customerPhone", "==", cleanPhone)));
+          for (const o of byCleanPhone) {
+            if (!results.some((r) => r.id === o.id)) results.push(o);
+          }
+        }
+
+        // Also check if customerEmail was saved as raw phone number
+        const byPhoneEmail = await safeFetch(query(collection(db, "orders"), where("customerEmail", "==", effectivePhone)));
+        for (const o of byPhoneEmail) {
+          if (!results.some((r) => r.id === o.id)) results.push(o);
+        }
+      }
+
+      // Fallback: If specific queries returned nothing or were blocked by missing composite indexes, attempt to scan orders collection and match client-side
+      if (results.length === 0) {
+        try {
+          const allDocs = await safeFetch(collection(db, "orders"));
+          const cleanUserPhone = effectivePhone ? effectivePhone.replace(/\D/g, "") : "";
+          for (const o of allDocs) {
+            const matchesUid = Boolean(userId && o.userId === userId);
+            const matchesEmail = Boolean(
+              (email && o.customerEmail === email) ||
+              (displayEmail && o.customerEmail === displayEmail) ||
+              (effectivePhone && o.customerEmail === effectivePhone)
+            );
+            const matchesPhone = Boolean(
+              effectivePhone &&
+                (o.customerPhone === effectivePhone ||
+                  (cleanUserPhone && o.customerPhone?.replace(/\D/g, "") === cleanUserPhone))
+            );
+            if (matchesUid || matchesEmail || matchesPhone) {
+              if (!results.some((r) => r.id === o.id)) results.push(o);
+            }
+          }
+        } catch {
+          /* ignore fallback error */
+        }
+      }
+
       return results.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
     },
   });

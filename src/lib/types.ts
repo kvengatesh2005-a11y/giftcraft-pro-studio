@@ -71,6 +71,7 @@ export type Poster = {
 export type AppUser = {
   uid: string;
   email: string;
+  displayEmail?: string;
   name: string;
   role?: string;
   phone?: string;

@@ -261,9 +261,19 @@ function ProductsTab() {
     return Array.from(set);
   }, [products]);
 
-  const [form, setForm] = useState({
+  const defaultCat = CATEGORIES[0] ?? "Combo Packs";
+
+  const [form, setForm] = useState<{
+    name: string;
+    category: string;
+    price: string;
+    originalPrice: string;
+    description: string;
+    stock: string;
+    icon: string;
+  }>({
     name: "",
-    category: CATEGORIES[0],
+    category: defaultCat,
     price: "",
     originalPrice: "",
     description: "",
@@ -279,7 +289,7 @@ function ProductsTab() {
     setUrlInput("");
     setForm({
       name: "",
-      category: CATEGORIES[0],
+      category: defaultCat,
       price: "",
       originalPrice: "",
       description: "",
@@ -301,7 +311,7 @@ function ProductsTab() {
       setCustomCategory(existingCat);
       setForm({
         name: p.name || "",
-        category: CATEGORIES[0],
+        category: defaultCat,
         price: p.price ? String(p.price) : "",
         originalPrice: p.originalPrice ? String(p.originalPrice) : "",
         description: p.description || "",
@@ -313,7 +323,7 @@ function ProductsTab() {
       setCustomCategory("");
       setForm({
         name: p.name || "",
-        category: existingCat || CATEGORIES[0],
+        category: existingCat || defaultCat,
         price: p.price ? String(p.price) : "",
         originalPrice: p.originalPrice ? String(p.originalPrice) : "",
         description: p.description || "",
@@ -378,7 +388,9 @@ function ProductsTab() {
     setProductImages((prev) => {
       const updated = [...prev];
       const [moved] = updated.splice(fromIndex, 1);
-      updated.splice(toIndex, 0, moved);
+      if (moved !== undefined) {
+        updated.splice(toIndex, 0, moved);
+      }
       return updated;
     });
   };
@@ -396,19 +408,23 @@ function ProductsTab() {
       return;
     }
 
-    const selectedCategory = (isCustomCategory ? customCategory.trim() : form.category).trim() || CATEGORIES[0];
+    const catInput = isCustomCategory ? customCategory : form.category;
+    const selectedCategory = catInput.trim() || defaultCat;
     const finalImages = productImages.filter((img) => img.trim() !== "").slice(0, 6);
 
-    const payload = {
+    const payload: Omit<Product, "id"> = {
       name: form.name.trim(),
       category: selectedCategory,
       price: Number(form.price),
-      originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
       description: form.description.trim(),
       stock: Number(form.stock) || 0,
       images: finalImages,
       icon: form.icon || "🎁",
     };
+
+    if (form.originalPrice) {
+      payload.originalPrice = Number(form.originalPrice);
+    }
 
     try {
       if (editingProduct) {
@@ -1632,6 +1648,31 @@ function PostersTab() {
   const { data: posters = [], refetch, isLoading } = useAllPosters();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ title: "", imageUrl: "", link: "/shop", order: "1", isActive: true });
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadProductImage(file);
+      if (url) {
+        setForm((f) => ({ ...f, imageUrl: url }));
+        toast.success("Poster image uploaded successfully!");
+      } else {
+        toast.error("Failed to upload poster image.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload poster image.");
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1738,15 +1779,73 @@ function PostersTab() {
               </div>
 
               <div>
-                <Label htmlFor="poster-img">Image URL *</Label>
-                <Input
-                  id="poster-img"
-                  required
-                  placeholder="https://..."
-                  value={form.imageUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                  className="mt-1"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="poster-img">Poster Banner Image *</Label>
+                  <span className="text-xs text-muted-foreground font-medium">Only 1 image allowed</span>
+                </div>
+
+                {form.imageUrl ? (
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-muted/40 p-2">
+                    <img
+                      src={form.imageUrl}
+                      alt="Poster Preview"
+                      className="h-32 w-full rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                      className="absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-transform hover:scale-105"
+                      title="Remove image"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 text-center transition-colors ${
+                      isUploading
+                        ? "border-primary/50 bg-primary/5 pointer-events-none"
+                        : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploading}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    {isUploading ? (
+                      <div className="flex flex-col items-center py-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <p className="mt-2 text-xs font-medium text-muted-foreground">
+                          Uploading poster image...
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center py-1">
+                        <Upload className="h-6 w-6 text-primary mb-1" />
+                        <p className="text-xs font-semibold text-foreground">
+                          Click to upload image file <span className="font-normal text-muted-foreground">(Only 1 image allowed)</span>
+                        </p>
+                        <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
+                          JPG, PNG, WEBP — upload 1 banner image file
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                )}
+
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    id="poster-img"
+                    placeholder="Or paste image URL (https://...)"
+                    value={form.imageUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                    disabled={isUploading}
+                    className="text-xs h-9"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1764,7 +1863,9 @@ function PostersTab() {
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Save Poster</Button>
+                <Button type="submit" disabled={isUploading || !form.imageUrl.trim()}>
+                  {isUploading ? "Uploading..." : "Save Poster"}
+                </Button>
               </div>
             </form>
           </div>

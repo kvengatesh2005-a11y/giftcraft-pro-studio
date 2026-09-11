@@ -326,8 +326,8 @@ function Checkout() {
                 try {
                   const payload = buildOrderPayload({
                     paymentMethod: "Razorpay (Online Gateway)",
-                    status: "paid",
-                    paymentStatus: "paid",
+                    status: "pending",
+                    paymentStatus: "pending_verification",
                     transactionId: response.razorpay_payment_id,
                     razorpayPaymentId: response.razorpay_payment_id,
                     razorpayOrderId: response.razorpay_order_id || null,
@@ -398,7 +398,7 @@ function Checkout() {
       toast.success("Order submitted for verification!");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to place order. Please try again.");
+      toast.error("Failed to place order. Please try again after signing in . . . . .");
     } finally {
       if (paymentMode === "upi_manual") {
         setIsSubmitting(false);
@@ -436,8 +436,8 @@ function Checkout() {
         createdAt: new Date().toISOString(),
         userId: user?.uid || null,
         paymentMethod: `Razorpay (${rzpTab.toUpperCase()} - ${rzpTab === "upi" ? selectedUpiApp : rzpTab === "netbanking" ? selectedBank : "Card"})`,
-        status: "paid",
-        paymentStatus: "paid",
+        status: "pending",
+        paymentStatus: "pending_verification",
         transactionId: mockPaymentId,
         razorpayPaymentId: mockPaymentId,
       };
@@ -454,7 +454,7 @@ function Checkout() {
       toast.success("Razorpay Payment Successful! Order confirmed.");
     } catch (err) {
       console.error("Error completing Razorpay payment:", err);
-      toast.error("Failed to complete payment. Please try again.");
+      toast.error("Failed to complete payment. Please try again after signing in . . . . .");
     } finally {
       setIsRzpProcessing(false);
       setIsSubmitting(false);
@@ -653,11 +653,10 @@ function Checkout() {
               {/* Option 1: Razorpay Online Payment */}
               <div
                 onClick={() => setPaymentMode("razorpay")}
-                className={`rounded-lg border p-4 cursor-pointer transition-all ${
-                  paymentMode === "razorpay"
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/40"
-                    : "border-border bg-card hover:bg-muted/40"
-                }`}
+                className={`rounded-lg border p-4 cursor-pointer transition-all ${paymentMode === "razorpay"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/40"
+                  : "border-border bg-card hover:bg-muted/40"
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -686,11 +685,10 @@ function Checkout() {
               {/* Option 2: Direct Manual UPI Transfer */}
               <div
                 onClick={() => setPaymentMode("upi_manual")}
-                className={`rounded-lg border p-4 cursor-pointer transition-all ${
-                  paymentMode === "upi_manual"
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/40"
-                    : "border-border bg-card hover:bg-muted/40"
-                }`}
+                className={`rounded-lg border p-4 cursor-pointer transition-all ${paymentMode === "upi_manual"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/40"
+                  : "border-border bg-card hover:bg-muted/40"
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -781,13 +779,12 @@ function Checkout() {
                           Transaction ID / UTR Ref No. *
                         </Label>
                         <span
-                          className={`text-[0.7rem] font-mono ${
-                            transactionId.length === 12
-                              ? "text-emerald-600 font-semibold dark:text-emerald-400"
-                              : transactionId.length > 0
+                          className={`text-[0.7rem] font-mono ${transactionId.length === 12
+                            ? "text-emerald-600 font-semibold dark:text-emerald-400"
+                            : transactionId.length > 0
                               ? "text-amber-600 font-medium dark:text-amber-400"
                               : "text-muted-foreground"
-                          }`}
+                            }`}
                         >
                           {transactionId.length}/12 digits
                         </span>
@@ -805,13 +802,12 @@ function Checkout() {
                           setTransactionId(val);
                         }}
                         placeholder="e.g. 425619803210 (12 digits)"
-                        className={`mt-1 font-mono tracking-wider ${
-                          transactionId.length > 0 && transactionId.length < 12
-                            ? "border-amber-500 focus-visible:ring-amber-500"
-                            : transactionId.length === 12
+                        className={`mt-1 font-mono tracking-wider ${transactionId.length > 0 && transactionId.length < 12
+                          ? "border-amber-500 focus-visible:ring-amber-500"
+                          : transactionId.length === 12
                             ? "border-emerald-500 focus-visible:ring-emerald-500"
                             : ""
-                        }`}
+                          }`}
                       />
                       <p className="mt-1 text-[0.75rem] text-muted-foreground">
                         Enter the 12-digit UTR or reference number shown in your UPI app after completing payment.
@@ -911,13 +907,12 @@ function Checkout() {
                     return (
                       <div
                         key={c.id}
-                        className={`rounded-lg border p-3 text-xs transition-all ${
-                          isApplied
-                            ? "border-emerald-500 bg-emerald-500/10"
-                            : isEligible
+                        className={`rounded-lg border p-3 text-xs transition-all ${isApplied
+                          ? "border-emerald-500 bg-emerald-500/10"
+                          : isEligible
                             ? "border-border bg-card hover:border-gold/60"
                             : "border-border/60 bg-muted/40 opacity-75"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -950,11 +945,10 @@ function Checkout() {
                                 setCouponSuccess(`Coupon "${c.code}" applied! Discount: ₹${c.discountAmount}`);
                                 setCouponError(null);
                               }}
-                              className={`h-7 text-xs font-semibold shrink-0 ${
-                                isEligible
-                                  ? "border-primary text-primary hover:bg-primary/10"
-                                  : "text-muted-foreground bg-muted/50 cursor-not-allowed"
-                              }`}
+                              className={`h-7 text-xs font-semibold shrink-0 ${isEligible
+                                ? "border-primary text-primary hover:bg-primary/10"
+                                : "text-muted-foreground bg-muted/50 cursor-not-allowed"
+                                }`}
                             >
                               {isEligible ? "Apply" : "Disabled"}
                             </Button>
